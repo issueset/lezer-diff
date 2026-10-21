@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lezer vs CommonMark</title>
+<style>
+  body { font: 14px/1.4 system-ui, sans-serif; margin: 16px; }
+  label { margin-right: 16px; }
+  input { font: 13px ui-monospace, monospace; width: 9em; }
+  input.invalid { outline: 2px solid #d33; }
+  textarea { width: 100%; height: 160px; margin-top: 8px; font: 12px ui-monospace, monospace; box-sizing: border-box; }
+  .columns { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  h2 { font-size: 15px; margin: 12px 0 4px; }
+  pre { background: #f4f4f4; padding: 8px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
+</style>
+</head>
+<body>
+<label>@lezer/markdown <input id="lezer-version" data-package="@lezer/markdown" value="1.8.1" spellcheck="false"></label>
+<label>commonmark <input id="commonmark-version" data-package="commonmark" value="0.31.2" spellcheck="false"></label>
+<textarea id="input" spellcheck="false">
+# Hello
+
+Some *emphasis*, **strong**, and a [link](https://example.com).
+
+- one
+- two
+</textarea>
+<div class="columns">
+  <div>
+    <h2>commonmark: XML AST</h2>
+    <pre id="commonmark-output"></pre>
+  </div>
+  <div>
+    <h2>@lezer/markdown: syntax tree without mark nodes</h2>
+    <pre id="lezer-output"></pre>
+  </div>
+</div>
+<script type="module">
+  const lezerVersionInput = document.getElementById("lezer-version")
+  const commonmarkVersionInput = document.getElementById("commonmark-version")
+  const textInput = document.getElementById("input")
+  let lezer
+  let commonmark
+
+  const isMark = (node) => node.name.endsWith("Mark")
+
+  function printLezerTree(doc) {
+    const lines = []
+    let depth = 0
+    lezer.parser.parse(doc).iterate({
+      enter(node) {
+        if (isMark(node)) return false
+        lines.push(`${"  ".repeat(depth)}${node.name} ${JSON.stringify(doc.slice(node.from, node.to))}`)
+        depth++
+      },
+      leave(node) {
+        if (!isMark(node)) depth--
+      },
+    })
+    return lines.join("\n")
+  }
+
+  function render() {
+    if (lezer == null || commonmark == null) return
+    const doc = textInput.value
+    const ast = new commonmark.Parser().parse(doc)
+    document.getElementById("commonmark-output").textContent = new commonmark.XmlRenderer().render(ast)
+    document.getElementById("lezer-output").textContent = printLezerTree(doc)
+  }
+
+  async function load(input) {
+    // Only load an exact version, so a half-typed value never reaches esm.sh.
+    const valid = /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.test(input.value)
+    input.classList.toggle("invalid", !valid)
+    if (!valid) return
+    const module = await import(`https://esm.sh/${input.dataset.package}@${input.value}`)
+    if (input === lezerVersionInput) lezer = module
+    else commonmark = module
+    render()
+  }
+
+  // `change` fires on Enter or blur, not on every keystroke.
+  lezerVersionInput.addEventListener("change", () => load(lezerVersionInput))
+  commonmarkVersionInput.addEventListener("change", () => load(commonmarkVersionInput))
+  textInput.addEventListener("input", render)
+  load(lezerVersionInput)
+  load(commonmarkVersionInput)
+</script>
+</body>
+</html>
