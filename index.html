@@ -18,14 +18,7 @@
 <body>
 <label>@lezer/markdown <input id="lezer-version" data-package="@lezer/markdown" value="1.8.1" spellcheck="false"></label>
 <label>commonmark <input id="commonmark-version" data-package="commonmark" value="0.31.2" spellcheck="false"></label>
-<textarea id="input" spellcheck="false">
-# Hello
-
-Some *emphasis*, **strong**, and a [link](https://example.com).
-
-- one
-- two
-</textarea>
+<textarea id="input" spellcheck="false"></textarea>
 <div class="columns">
   <div>
     <h2>commonmark: XML AST</h2>
@@ -42,6 +35,14 @@ Some *emphasis*, **strong**, and a [link](https://example.com).
   const textInput = document.getElementById("input")
   let lezer
   let commonmark
+
+  // Link labels with exactly 998, 999, and 1000 characters. CommonMark allows at most 999.
+  textInput.value = [998, 999, 1000]
+    .map((length) => {
+      const label = `a${length}_`.padEnd(length, "a")
+      return `[foo][${label}]\n\n[${label}]: /url "title"`
+    })
+    .join("\n\n\n")
 
   const isMark = (node) => node.name.endsWith("Mark")
 
